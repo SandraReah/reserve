@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Table Reservation</title>
+    <style>
+        body { font-family: sans-serif; }
+        .table { border: 1px solid #ccc; padding: 10px; margin-bottom: 5px; }
+        .reserved { background-color: #fdd; }
+        .available { background-color: #dfd; }
+        #message { margin-top: 10px; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1>Table Reservation System</h1>
+
+    <h2>Available Tables</h2>
+    <div id="available-tables"></div>
+
+    <h2>Reserve a Table</h2>
+    <form id="reserve-form">
+        <label for="reserve-table-number">Table Number:</label>
+        <input type="number" id="reserve-table-number" name="tableNumber" required><br><br>
+        <label for="reserve-customer-name">Your Name:</label>
+        <input type="text" id="reserve-customer-name" name="customerName" required><br><br>
+        <label for="reserve-guest-count">Guest Count:</label>
+        <input type="number" id="reserve-guest-count" name="guestCount" required><br><br>
+        <button type="submit">Reserve Table</button>
+    </form>
+    <div id="reservation-message"></div>
+
+    <h2>Cancel Reservation</h2>
+    <form id="cancel-form">
+        <label for="cancel-reservation-id">Reservation ID:</label>
+        <input type="number" id="cancel-reservation-id" name="reservationId" required><br><br>
+        <button type="submit">Cancel Reservation</button>
+    </form>
+    <div id="cancellation-message"></div>
+
+    <script>
+        const availableTablesDiv = document.getElementById('available-tables');
+        const reserveForm = document.getElementById('reserve-form');
+        const reservationMessageDiv = document.getElementById('reservation-message');
+        const cancelForm = document.getElementById('cancel-form');
+        const cancellationMessageDiv = document.getElementById('cancellation-message');
+
+        async function fetchAvailableTables() {
+            try {
+                const response = await fetch('http://localhost:3000/tables');
+                const tables = await response.json();
+                availableTablesDiv.innerHTML = '';
+                tables.forEach(table => {
+                    const tableDiv = document.createElement('div');
+                    tableDiv.classList.add('table', 'available');
+                    tableDiv.textContent = `Table ${table.id} (Seats: ${table.seats})`;
+                    availableTablesDiv.appendChild(tableDiv);
+                });
+            } catch (error) {
+                console.error('Error fetching tables:', error);
+                availableTablesDiv.textContent = 'Failed to load available tables.';
+            }
+        }
+
+        reserveForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const tableNumber = document.getElementById('reserve-table-number').value;
+            const customerName = document.getElementById('reserve-customer-name').value;
+            const guestCount = document.getElementById('reserve-guest-count').value;
+
+            try {
+                const response = await fetch('http://localhost:3000/reserve', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ tableNumber, customerName, guestCount }),
+                });
+                const result = await response.json();
+                if (response.ok) {
+                    reservationMessageDiv.textContent = result.success;
+                    reservationMessageDiv.style.color = 'green';
+                    fetchAvailableTables(); // Refresh table list
+                } else {
+                    reservationMessageDiv.textContent = result.error;
+                    reservationMessageDiv.style.color = 'red';
+                }
+            } catch (error) {
+                console.error('Error reserving table:', error);
+                reservationMessageDiv.textContent = 'Failed to reserve table.';
+                reservationMessageDiv.style.color = 'red';
+            }
+            reserveForm.reset();
+        });
+
+        cancelForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const reservationId = document.getElementById('cancel-reservation-id').value;
+
+            try {
+                const response = await fetch(`http://localhost:3000/cancel/${reservationId}`, {
+                    method: 'DELETE',
+                });
+                const result = await response.json();
+                if (response.ok) {
+                    cancellationMessageDiv.textContent = result.success;
+                    cancellationMessageDiv.style.color = 'green';
+                    fetchAvailableTables(); // Refresh table list
+                } else {
+                    cancellationMessageDiv.textContent = result.error;
+                    cancellationMessageDiv.style.color = 'red';
+                }
+            } catch (error) {
+                console.error('Error cancelling reservation:', error);
+                cancellationMessageDiv.textContent = 'Failed to cancel reservation.';
+                cancellationMessageDiv.style.color = 'red';
+            }
+            cancelForm.reset();
+        });
+
+        // Initial load of available tables
+        fetchAvailableTables();
+    </script>
+</body>
+</html>
